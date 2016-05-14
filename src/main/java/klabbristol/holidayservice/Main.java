@@ -3,6 +3,7 @@ package klabbristol.holidayservice;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import klabbristol.holidayservice.dao.HolidayRepo;
 import klabbristol.holidayservice.model.NewHoliday;
 import klabbristol.holidayservice.utils.LocalDateAdapter;
 
@@ -26,29 +27,24 @@ public class Main {
                 .registerTypeAdapter(LocalDate.class, new LocalDateAdapter())
                 .create();
 
-        List<NewHoliday> holidays = new ArrayList<>();
+        HolidayRepo repo = new HolidayRepo();
 
         get("/", (req, res) -> "hello");
 
         post("/holidays", (req, res) -> {
-            holidays.add(gson.fromJson(req.body(), NewHoliday.class));
+            repo.add(gson.fromJson(req.body(), NewHoliday.class));
 
             res.status(201);
             return "";
         });
 
         get("/holidays", (req, res) -> {
-            List<NewHoliday> holidayList =
+            List<NewHoliday> holidays =
                     Optional.ofNullable(req.queryParams("user"))
-                            .map(user ->
-                                    holidays
-                                            .stream()
-                                            .filter(h -> h.user.equals(user))
-                                            .collect(toList())
-                            )
-                            .orElse(holidays);
+                            .map(repo::findByUser)
+                            .orElse(repo.findAll());
 
-            return gson.toJson(holidayList);
+            return gson.toJson(holidays);
         });
 
         after((req, res) -> res.type("application/json"));
