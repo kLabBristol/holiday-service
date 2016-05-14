@@ -10,7 +10,9 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
+import static java.util.stream.Collectors.toList;
 import static spark.Spark.after;
 import static spark.Spark.get;
 import static spark.Spark.port;
@@ -36,7 +38,17 @@ public class Main {
         });
 
         get("/holidays", (req, res) -> {
-            return gson.toJson(holidays);
+            List<NewHoliday> holidayList =
+                    Optional.ofNullable(req.queryParams("user"))
+                            .map(user ->
+                                    holidays
+                                            .stream()
+                                            .filter(h -> h.user.equals(user))
+                                            .collect(toList())
+                            )
+                            .orElse(holidays);
+
+            return gson.toJson(holidayList);
         });
 
         after((req, res) -> res.type("application/json"));
