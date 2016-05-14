@@ -3,12 +3,12 @@ package klabbristol.holidayservice;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import klabbristol.holidayservice.config.AppConfig;
+import com.typesafe.config.Config;
+import com.typesafe.config.ConfigFactory;
 import klabbristol.holidayservice.dao.HolidayRepo;
 import klabbristol.holidayservice.model.Holiday;
 import klabbristol.holidayservice.model.NewHoliday;
 import klabbristol.holidayservice.utils.LocalDateAdapter;
-import org.aeonbits.owner.ConfigFactory;
 import org.skife.jdbi.v2.DBI;
 
 import java.time.LocalDate;
@@ -20,15 +20,15 @@ import static spark.Spark.*;
 public class Main {
     public static void main(String[] args) {
 
-        AppConfig config = ConfigFactory.create(AppConfig.class);
-        port(config.port());
+        Config config = ConfigFactory.load();
+
+        port(config.getInt("port"));
 
         Gson gson = new GsonBuilder()
                 .registerTypeAdapter(LocalDate.class, new LocalDateAdapter())
                 .create();
 
-
-        DBI dbi = new DBI(config.databaseUrl());
+        DBI dbi = new DBI(config.getString("databaseUrl"));
         HolidayRepo repo = dbi.onDemand(HolidayRepo.class);
 
         get("/", (req, res) -> "hello");
