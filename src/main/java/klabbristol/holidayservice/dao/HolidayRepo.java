@@ -1,25 +1,47 @@
 package klabbristol.holidayservice.dao;
 
 import klabbristol.holidayservice.model.NewHoliday;
+import org.skife.jdbi.v2.StatementContext;
+import org.skife.jdbi.v2.sqlobject.Bind;
+import org.skife.jdbi.v2.sqlobject.BindBean;
+import org.skife.jdbi.v2.sqlobject.SqlQuery;
+import org.skife.jdbi.v2.sqlobject.SqlUpdate;
+import org.skife.jdbi.v2.sqlobject.customizers.RegisterMapper;
+import org.skife.jdbi.v2.tweak.ResultSetMapper;
 
-import java.util.ArrayList;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.List;
 
-import static java.util.stream.Collectors.toList;
+@RegisterMapper(HolidayRepo.HolidayMapper.class)
+public interface HolidayRepo {
 
-public class HolidayRepo {
+    @SqlUpdate(
+            "INSERT INTO holidays (\"user\", \"from\" ,\"to\") " +
+            "VALUES (:user, :from, :to)"
+    )
+    void add(@BindBean NewHoliday h);
 
-    private List<NewHoliday> db = new ArrayList<>();
+    @SqlQuery("SELECT * FROM holidays")
+    List<NewHoliday> findAll();
 
-    public void add(NewHoliday h) {
-        db.add(h);
+    @SqlQuery(
+            "SELECT * FROM holidays " +
+            "WHERE user = :user"
+    )
+    List<NewHoliday> findByUser(@Bind String user);
+
+    // region mapper
+    static class HolidayMapper implements ResultSetMapper<NewHoliday> {
+
+        @Override
+        public NewHoliday map(int index, ResultSet r, StatementContext ctx) throws SQLException {
+            return new NewHoliday(
+                    r.getString("user"),
+                    r.getDate("from").toLocalDate(),
+                    r.getDate("to").toLocalDate()
+            );
+        }
     }
-
-    public List<NewHoliday> findAll() {
-        return db;
-    }
-
-    public List<NewHoliday> findByUser(String user) {
-        return db.stream().filter(h -> h.user.equals(user)).collect(toList());
-    }
+    // endregion
 }

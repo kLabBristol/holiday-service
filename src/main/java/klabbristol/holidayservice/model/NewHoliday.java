@@ -15,4 +15,18 @@ public class NewHoliday {
         this.to = to;
     }
     // endregion
+
+    // region getters for JDBI
+    public String getUser() {
+        return user;
+    }
+
+    public LocalDate getFrom() {
+        return from;
+    }
+
+    public LocalDate getTo() {
+        return to;
+    }
+    // endregion
 }

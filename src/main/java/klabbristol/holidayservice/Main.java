@@ -6,6 +6,7 @@ import com.google.gson.GsonBuilder;
 import klabbristol.holidayservice.dao.HolidayRepo;
 import klabbristol.holidayservice.model.NewHoliday;
 import klabbristol.holidayservice.utils.LocalDateAdapter;
+import org.skife.jdbi.v2.DBI;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -21,7 +22,8 @@ public class Main {
                 .registerTypeAdapter(LocalDate.class, new LocalDateAdapter())
                 .create();
 
-        HolidayRepo repo = new HolidayRepo();
+        DBI dbi = new DBI("jdbc:postgresql://192.168.99.100:32769/holidays?user=postgres");
+        HolidayRepo repo = dbi.onDemand(HolidayRepo.class);
 
         get("/", (req, res) -> "hello");
 
