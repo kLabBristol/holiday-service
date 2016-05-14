@@ -8,16 +8,10 @@ import klabbristol.holidayservice.model.NewHoliday;
 import klabbristol.holidayservice.utils.LocalDateAdapter;
 
 import java.time.LocalDate;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
-import static java.util.stream.Collectors.toList;
-import static spark.Spark.after;
-import static spark.Spark.get;
-import static spark.Spark.port;
-import static spark.Spark.post;
+import static spark.Spark.*;
 
 public class Main {
     public static void main(String[] args) {
