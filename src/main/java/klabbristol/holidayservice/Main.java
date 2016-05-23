@@ -5,6 +5,9 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
+import io.jsonwebtoken.JwtException;
+import io.jsonwebtoken.JwtParser;
+import io.jsonwebtoken.Jwts;
 import klabbristol.holidayservice.dao.HolidayRepo;
 import klabbristol.holidayservice.model.Holiday;
 import klabbristol.holidayservice.model.NewHoliday;
@@ -30,6 +33,16 @@ public class Main {
 
         DBI dbi = new DBI(config.getString("databaseUrl"));
         HolidayRepo repo = dbi.onDemand(HolidayRepo.class);
+
+        JwtParser jwtParser = Jwts.parser().setSigningKey(config.getString("secret").getBytes());
+
+        before((req, res) -> {
+            try {
+                jwtParser.parse(req.headers("Authorization"));
+            } catch (JwtException | IllegalArgumentException e) {
+                halt(403);
+            }
+        });
 
         get("/", (req, res) -> "hello");
 
