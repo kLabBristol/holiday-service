@@ -1,5 +1,7 @@
 package klabbristol.holidayservice.model;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.time.LocalDate;
 
 public class NewHoliday {
@@ -9,7 +11,11 @@ public class NewHoliday {
     public final LocalDate to;
 
     // region constructor
-    public NewHoliday(String user, LocalDate from, LocalDate to) {
+    public NewHoliday(
+        @JsonProperty("user") String user,
+        @JsonProperty("from") LocalDate from,
+        @JsonProperty("to") LocalDate to
+    ) {
         this.user = user;
         this.from = from;
         this.to = to;

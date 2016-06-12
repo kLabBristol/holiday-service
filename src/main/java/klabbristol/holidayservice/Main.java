@@ -1,67 +1,72 @@
 package klabbristol.holidayservice;
 
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
-import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.JwtParser;
 import io.jsonwebtoken.Jwts;
 import klabbristol.holidayservice.dao.HolidayRepo;
 import klabbristol.holidayservice.model.Holiday;
 import klabbristol.holidayservice.model.NewHoliday;
-import klabbristol.holidayservice.utils.LocalDateAdapter;
 import org.skife.jdbi.v2.DBI;
+import ratpack.server.RatpackServer;
+import ratpack.server.ServerConfig;
 
-import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
-import static spark.Spark.*;
+import static ratpack.jackson.Jackson.fromJson;
+import static ratpack.jackson.Jackson.json;
 
 public class Main {
-    public static void main(String[] args) {
+    public static void main(String[] args) throws Exception {
 
         Config config = ConfigFactory.load();
-
-        port(config.getInt("port"));
-
-        Gson gson = new GsonBuilder()
-                .registerTypeAdapter(LocalDate.class, new LocalDateAdapter())
-                .create();
 
         DBI dbi = new DBI(config.getString("databaseUrl"));
         HolidayRepo repo = dbi.onDemand(HolidayRepo.class);
 
         JwtParser jwtParser = Jwts.parser().setSigningKey(config.getString("secret").getBytes());
 
-        before((req, res) -> {
-            try {
-                jwtParser.parse(req.headers("Authorization"));
-            } catch (JwtException | IllegalArgumentException e) {
-                halt(403);
-            }
-        });
+        RatpackServer.start(server -> server
+            .serverConfig(ServerConfig.embedded().port(config.getInt("port")))
+            .registryOf(r -> r.add(
+                new ObjectMapper()
+                    .registerModule(new JavaTimeModule())
+                    .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
+            ))
+            .handlers(chain -> chain
+                .all(ctx -> {
+                    try {
+                        jwtParser.parse(ctx.getRequest().getHeaders().get("Authorization"));
+                        ctx.next();
+                    } catch (Exception e) {
+                        ctx.getResponse().status(403).send();
+                    }
+                })
+                .path("holidays", ctx -> ctx
+                    .byMethod(m -> m
+                        .post(() -> {
+                            ctx.parse(fromJson(NewHoliday.class))
+                                .then(holiday -> {
+                                    repo.add(holiday);
+                                    ctx.getResponse().status(201).send();
+                                });
+                        })
+                        .get(() -> {
+                            List<Holiday> holidays =
+                                Optional.ofNullable(ctx.getRequest().getQueryParams().get("user"))
+                                    .map(repo::findByUser)
+                                    .orElse(repo.findAll());
 
-        get("/", (req, res) -> "hello");
-
-        post("/holidays", (req, res) -> {
-            repo.add(gson.fromJson(req.body(), NewHoliday.class));
-
-            res.status(201);
-            return "";
-        });
-
-        get("/holidays", (req, res) -> {
-            List<Holiday> holidays =
-                    Optional.ofNullable(req.queryParams("user"))
-                            .map(repo::findByUser)
-                            .orElse(repo.findAll());
-
-            return gson.toJson(holidays);
-        });
-
-        after((req, res) -> res.type("application/json"));
+                            ctx.render(json(holidays));
+                        })
+                    )
+                )
+            )
+        );
     }
 }
