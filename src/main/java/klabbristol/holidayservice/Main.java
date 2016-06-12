@@ -6,20 +6,13 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
-import io.jsonwebtoken.JwtParser;
 import io.jsonwebtoken.Jwts;
 import klabbristol.holidayservice.dao.HolidayRepo;
-import klabbristol.holidayservice.model.Holiday;
-import klabbristol.holidayservice.model.NewHoliday;
+import klabbristol.holidayservice.handlers.HolidaysHandler;
+import klabbristol.holidayservice.handlers.JwtHandler;
 import org.skife.jdbi.v2.DBI;
 import ratpack.server.RatpackServer;
 import ratpack.server.ServerConfig;
-
-import java.util.List;
-import java.util.Optional;
-
-import static ratpack.jackson.Jackson.fromJson;
-import static ratpack.jackson.Jackson.json;
 
 public class Main {
     public static void main(String[] args) throws Exception {
@@ -37,35 +30,8 @@ public class Main {
                 .add(Jwts.parser().setSigningKey(config.getString("secret").getBytes()))
             )
             .handlers(chain -> chain
-                .all(ctx -> {
-                    try {
-                        ctx.get(JwtParser.class).parse(ctx.getRequest().getHeaders().get("Authorization"));
-                        ctx.next();
-                    } catch (Exception e) {
-                        ctx.getResponse().status(403).send();
-                    }
-                })
-                .path("holidays", ctx -> {
-                    HolidayRepo repo = ctx.get(HolidayRepo.class);
-
-                    ctx.byMethod(m -> m
-                        .post(() -> {
-                            ctx.parse(fromJson(NewHoliday.class))
-                                .then(holiday -> {
-                                    repo.add(holiday);
-                                    ctx.getResponse().status(201).send();
-                                });
-                        })
-                        .get(() -> {
-                            List<Holiday> holidays =
-                                Optional.ofNullable(ctx.getRequest().getQueryParams().get("user"))
-                                    .map(repo::findByUser)
-                                    .orElse(repo.findAll());
-
-                            ctx.render(json(holidays));
-                        })
-                    );
-                })
+                .all(new JwtHandler())
+                .path("holidays", new HolidaysHandler())
             )
         );
     }
