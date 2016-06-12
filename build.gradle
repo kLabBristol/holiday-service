@@ -24,6 +24,8 @@ repositories {
 
 dependencies {
 
+    compile ratpack.dependency("guice")
+
     compile 'org.postgresql:postgresql:9.4.1208'
     compile 'org.jdbi:jdbi:2.73'
 
