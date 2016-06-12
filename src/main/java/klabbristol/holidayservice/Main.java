@@ -26,29 +26,29 @@ public class Main {
 
         Config config = ConfigFactory.load();
 
-        DBI dbi = new DBI(config.getString("databaseUrl"));
-        HolidayRepo repo = dbi.onDemand(HolidayRepo.class);
-
-        JwtParser jwtParser = Jwts.parser().setSigningKey(config.getString("secret").getBytes());
-
         RatpackServer.start(server -> server
             .serverConfig(ServerConfig.embedded().port(config.getInt("port")))
-            .registryOf(r -> r.add(
-                new ObjectMapper()
-                    .registerModule(new JavaTimeModule())
-                    .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
-            ))
+            .registryOf(r -> r
+                .add(new ObjectMapper()
+                         .registerModule(new JavaTimeModule())
+                         .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
+                )
+                .add(new DBI(config.getString("databaseUrl")).onDemand(HolidayRepo.class))
+                .add(Jwts.parser().setSigningKey(config.getString("secret").getBytes()))
+            )
             .handlers(chain -> chain
                 .all(ctx -> {
                     try {
-                        jwtParser.parse(ctx.getRequest().getHeaders().get("Authorization"));
+                        ctx.get(JwtParser.class).parse(ctx.getRequest().getHeaders().get("Authorization"));
                         ctx.next();
                     } catch (Exception e) {
                         ctx.getResponse().status(403).send();
                     }
                 })
-                .path("holidays", ctx -> ctx
-                    .byMethod(m -> m
+                .path("holidays", ctx -> {
+                    HolidayRepo repo = ctx.get(HolidayRepo.class);
+
+                    ctx.byMethod(m -> m
                         .post(() -> {
                             ctx.parse(fromJson(NewHoliday.class))
                                 .then(holiday -> {
@@ -64,8 +64,8 @@ public class Main {
 
                             ctx.render(json(holidays));
                         })
-                    )
-                )
+                    );
+                })
             )
         );
     }
